@@ -3,26 +3,39 @@ def parse_input(user_input):
     cmd = cmd.strip().lower()
     return cmd, *args
 
+def add_contact_error(func):
+    def inner(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except ValueError:
+            return "Give me name and phone please."
+    return inner
+
+@add_contact_error
 def add_contact(args, contacts):
-    try:
         name, phone = args
         contacts[name] = phone
         return "Contact added."
-    except:
-        return "Invalid command."
 
+def change_contact_error(func):
+    def inner(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except ValueError:
+            return "Give me existing name, and a new phone, please."
+    return inner
+
+@change_contact_error
 def change_contact(args, contacts):
-    try:
-        name, phone = args
-        if name in contacts.keys():
-            contacts[name] = phone
-            return "Contact updated."
-        else:
-            return "Name doesn't find."
-    except:
-        return "Invalid command."
+    name, phone = args
+    if name in contacts.keys():
+        contacts[name] = phone
+        return "Contact updated."
+    else:
+        return "Name doesn't find."
 
-def show_all(args, contacts):
+
+def show_all(contacts):
     res = ''
     for contact, phone_number in contacts.items():
         res = (f"{contact:>15} : {phone_number:<20}") if not res else res + '\n' + (f"{contact:>15} : {phone_number:<20}")
@@ -53,7 +66,7 @@ def main():
             elif command == "change":
                 print(change_contact(args, contacts))
             elif command == "all":
-                print(show_all(args, contacts))
+                print(show_all(contacts))
             elif command == "phone":
                 print(show_phone(args, contacts))
             else:

@@ -1,65 +1,82 @@
-def parse_input(user_input):
-    cmd, *args = user_input.split()
-    cmd = cmd.strip().lower()
-    return cmd, *args
+from datetime import datetime, timedelta
+from collections import defaultdict
 
-def add_contact(args, contacts):
-    try:
-        name, phone = args
-        contacts[name] = phone
-        return "Contact added."
-    except:
-        return "Invalid command."
+users = [
+    {"name": "Kaitlyn Espinoza",    "birthday": datetime(1955, 10, 28)},
+    {"name": "Cameron Vazquez",     "birthday": datetime(1952, 11, 27)},
+    {"name": "Aliza Schmidt",       "birthday": datetime(1956, 7, 27)},
+    {"name": "Sierra Jaramillo",    "birthday": datetime(1975, 12, 24)},
+    {"name": "Yara Stein",          "birthday": datetime(1983, 1, 7)},
+    {"name": "Creed Patel",         "birthday": datetime(2000, 4, 29)},
+    {"name": "Madeline Nichols",    "birthday": datetime(1998, 8, 20)},
+    {"name": "Sierra Jaramillo",    "birthday": datetime(1987, 10, 15)},
+    {"name": "Atlas Moss",          "birthday": datetime(1999, 10, 14)},
+    {"name": "Bianca McCullough",   "birthday": datetime(2002, 10, 18)},
+    {"name": "Tessa Hernandez",     "birthday": datetime(1971, 10, 15)},
+    {"name": "Celia Marquez",       "birthday": datetime(1991, 2, 15)}
+]
 
-def change_contact(args, contacts):
-    try:
-        name, phone = args
-        if name in contacts.keys():
-            contacts[name] = phone
-            return "Contact updated."
-        else:
-            return "Name doesn't find."
-    except:
-        return "Invalid command."
+# создаем список дней недели от текущего дня
+def create_weekdays_order(today_date):
+    weekdays_order_dict = defaultdict(list)
+    for i in range(7):
+        dt = today_date + timedelta(days=i)
+        day = dt.strftime("%A")
+        weekdays_order_dict[i] = day
+    return weekdays_order_dict
 
-def show_all(args, contacts):
-    res = ''
-    for contact, phone_number in contacts.items():
-        res = (f"{contact:>15} : {phone_number:<20}") if not res else res + '\n' + (f"{contact:>15} : {phone_number:<20}")
-    return res    
+# определяем интервал дат для празднования
+def dates_for_party(start_date):
+    day_of_week = int(start_date.strftime("%w"))
+    if day_of_week == 1:  # понедельник. Нужно не забыть тех, кто в выходные родился
+        start_date = start_date - timedelta(days=2)
+    elif day_of_week == 0:  # воскресенье: считаем с субботы и до пятницы включительно
+        start_date = start_date - timedelta(days=1)
+    end_date = start_date + timedelta(days=6)
+    return [start_date, end_date]
 
-def show_phone(args, contacts):
-        name = args[0]
-        if name in contacts.keys():
-            return contacts[name]
-        else:
-            return "Didn't find"
+# список людей с днями рождения со start_date по end_date включительно
+def get_party_people(data, start_date, end_date):
+    party_people = list()
+    for d in data:
+        dt = d['birthday']
+        current_year = int(start_date.strftime("%Y"))
+        birthday_this_year = dt.replace(year=current_year)
+        if start_date.strftime("%Y") != end_date.strftime("%Y"): # в неделе есть новый год
+            if birthday_this_year.strftime("%m") == '01':
+                birthday_this_year = dt.replace(year=current_year+1)
+        if birthday_this_year >= start_date and birthday_this_year <= end_date:
+            party_people.append(d)
+    return party_people
 
-def main():
-    contacts = {}
-    print("Welcome to the assistant bot!")
-    while True:
-        user_input = input("Enter a command: ")
-        if user_input:
-            command, *args = parse_input(user_input)
+# получаем распределение по дням недели
+def get_birthday_per_week(data, start_date, end_date):
+    res = defaultdict(list)
+    for d in data:
+        dt = d['birthday']
+        current_year = int(start_date.strftime("%Y"))
+        birthday_this_year = dt.replace(year=current_year)
+        if start_date.strftime("%Y") != end_date.strftime("%Y"): # в неделе есть новый год
+            if birthday_this_year.strftime("%m") == '01':
+                birthday_this_year = dt.replace(year=current_year+1)
+        day = birthday_this_year.strftime("%A")
+        res[day].append(d["name"])
+    return res
 
-            if command in ["close", "exit"]:
-                print("Good bye!")
-                break
-            elif command == "hello":
-                print("How can I help you?")
-            elif command == "add":
-                print(add_contact(args, contacts))
-            elif command == "change":
-                print(change_contact(args, contacts))
-            elif command == "all":
-                print(show_all(args, contacts))
-            elif command == "phone":
-                print(show_phone(args, contacts))
-            else:
-                print("Invalid command.")
-        else:
-            print("Invalid command.")
+# вывод в консоль
+def return_result(weekdays_order, group_week):
+    group_week['Monday'] = group_week['Saturday'] + group_week['Sunday'] + group_week['Monday']
+    for wd, wdn in weekdays_order.items():
+        if group_week[wdn]:
+            line_bearthday_people = ", ".join(group_week[wdn])
+            if wdn != 'Saturday' and wdn != 'Sunday':
+                print(f"{wdn:<9} : {line_bearthday_people}")
+    
 
-if __name__ == "__main__":
-    main()
+def get_birthdays_per_week(users):
+    today_date = datetime.now()
+    weekdays_order = (create_weekdays_order(today_date))
+    start_date, end_date = dates_for_party(today_date)
+    party_people = get_party_people(users, start_date, end_date)
+    group_week = get_birthday_per_week(party_people, start_date, end_date)
+    return_result(weekdays_order, group_week)

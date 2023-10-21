@@ -1,78 +1,120 @@
-def parse_input(user_input):
-    cmd, *args = user_input.split()
-    cmd = cmd.strip().lower()
-    return cmd, *args
+from collections import UserDict
 
-def add_contact_error(func):
-    def inner(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except ValueError:
-            return "Give me name and phone please."
-    return inner
+class LenPhoneError(Exception):
+    pass
 
-@add_contact_error
-def add_contact(args, contacts):
-        name, phone = args
-        contacts[name] = phone
-        return "Contact added."
+class RecordNotFindError(Exception):
+    pass
 
-def change_contact_error(func):
-    def inner(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except ValueError:
-            return "Give me existing name, and a new phone, please."
-    return inner
+class Field:
+    def __init__(self, value):
+        self.value = value
 
-@change_contact_error
-def change_contact(args, contacts):
-    name, phone = args
-    if name in contacts.keys():
-        contacts[name] = phone
-        return "Contact updated."
-    else:
-        return "Name doesn't find."
+    def __str__(self):
+        return str(self.value)
 
+class Name(Field):
+    def __init__(self, value):
+        self.value = value
 
-def show_all(contacts):
-    res = ''
-    for contact, phone_number in contacts.items():
-        res = (f"{contact:>15} : {phone_number:<20}") if not res else res + '\n' + (f"{contact:>15} : {phone_number:<20}")
-    return res    
+class Phone(Field):
+    MAX_PHONE_LEN = 10
 
-def show_phone(args, contacts):
-        name = args[0]
-        if name in contacts.keys():
-            return contacts[name]
+    def __init__(self, value):
+        self.value = value
+    
+class Record:
+    def __init__(self, name):
+        self.name = Name(name)
+        self.phones = []
+
+    def add_phone(self, phone):
+        if len(phone) == Phone.MAX_PHONE_LEN:
+            self.phones.append(Phone(phone))
         else:
-            return "Didn't find"
+            raise LenPhoneError
 
-def main():
-    contacts = {}
-    print("Welcome to the assistant bot!")
-    while True:
-        user_input = input("Enter a command: ")
-        if user_input:
-            command, *args = parse_input(user_input)
+    def remove_phone(self, phone):
+        pass
 
-            if command in ["close", "exit"]:
-                print("Good bye!")
-                break
-            elif command == "hello":
-                print("How can I help you?")
-            elif command == "add":
-                print(add_contact(args, contacts))
-            elif command == "change":
-                print(change_contact(args, contacts))
-            elif command == "all":
-                print(show_all(contacts))
-            elif command == "phone":
-                print(show_phone(args, contacts))
-            else:
-                print("Invalid command.")
+    def edit_phone(self, phone_old, phone_new):
+        if len(phone_new) != Phone.MAX_PHONE_LEN:
+            raise LenPhoneError
         else:
-            print("Invalid command.")
+            for phone in self.phones:
+                if phone.value == phone_old:
+                    phone.value = phone_new
 
-if __name__ == "__main__":
-    main()
+    def find_phone(self, phone):
+        res = None
+        for p in self.phones:
+            if p.value == phone:
+                res = phone
+        return res
+
+    def __str__(self):
+        return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}"
+
+class AddressBook(UserDict):
+    def __init__(self):
+        self.data = UserDict()
+    
+    def add_record(self, record):
+        self.data[record.name.value] = record
+
+    def find(self, name):
+        rec = self.data.get(name)
+        if rec == None:
+            raise RecordNotFindError
+        else:
+            return rec
+
+    def delete(self, name):
+        if self.data.get(name) == None:
+            raise RecordNotFindError
+        else:
+            self.data.pop(name)
+
+
+# # Створення нової адресної книги
+# book = AddressBook()
+
+# # Створення запису для John
+# john_record = Record("John")
+# john_record.add_phone("1234567890")
+# john_record.add_phone("5555555555")
+
+# # Додавання запису John до адресної книги
+# book.add_record(john_record)
+
+# # Створення та додавання нового запису для Jane
+# jane_record = Record("Jane")
+# jane_record.add_phone("9876543210")
+# book.add_record(jane_record)
+
+# # Виведення всіх записів у книзі
+# for name, record in book.data.items():
+#     print(record)
+
+# # Знаходження та редагування телефону для John
+# john = book.find("John")
+# john.edit_phone("1234567890", "1112223333")
+
+# print(john)  # Виведення: Contact name: John, phones: 1112223333; 5555555555
+
+# # Пошук конкретного телефону у записі John
+# found_phone = john.find_phone("5555555555")
+# print(f"{john.name}: {found_phone}")  # Виведення: 5555555555
+
+# # Виведення всіх записів у книзі
+# print('\nAll Records:')
+# for name, record in book.data.items():
+#     print(record)
+
+# # Видалення запису Jane
+# book.delete("Jane")
+
+# # Виведення всіх записів у книзі
+# print('\nAll Records:')
+# for name, record in book.data.items():
+#     print(record)
